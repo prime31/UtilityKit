@@ -27,7 +27,7 @@ Matthew / Team Colorblind
 
 */
 
-
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System.IO;
@@ -119,3 +119,4 @@ namespace Prime31Editor
 		}
 	}
 }
+#endif

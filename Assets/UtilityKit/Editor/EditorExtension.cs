@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 
@@ -63,5 +64,6 @@ public class EnumBitMaskPropertyDrawer : PropertyDrawer
 		label.text = label.text;
 		prop.intValue = EditorExtension.DrawBitMaskField( position, prop.intValue, fieldInfo.FieldType, label );
 	}
-}
-}
+}}
+
+#endif

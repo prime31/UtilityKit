@@ -1,4 +1,5 @@
 //#define DISABLE_AUTO_GENERATION
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System;
@@ -425,3 +426,4 @@ namespace Prime31Editor
 	}
 #endif
 }
+#endif
