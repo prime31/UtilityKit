@@ -9,10 +9,25 @@ using UnityEditor;
 
 public class ObjectInspectorExample : MonoBehaviour, IObjectInspectable
 {
+	[System.Flags]
+	public enum SomeEnum
+	{
+		Poop = 1,
+		Pizza,
+		Meatballs,
+		Dog,
+		Rice
+	}
+
+
 	// this attribute will add handles for your Vector3s so that you can drag them around in the scene view
 	[Vector3Inspectable]
 	[SerializeField]
 	List<Vector3> someListOfVectors;
+
+	[SerializeField]
+	[BitMaskAttribute]
+	SomeEnum anEnumWithInspector;
   
   
 	// this method will appear as a button in the inspector

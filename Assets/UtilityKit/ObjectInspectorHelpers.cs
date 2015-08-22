@@ -5,12 +5,12 @@ using System;
 
 namespace Prime31
 {
-
 	/// <summary>
 	/// implement this empty interface to tell the ObjectInspector that your class should be inspected
 	/// </summary>
 	public interface IObjectInspectable
-	{}
+	{
+	}
 
 
 	/// <summary>
@@ -18,7 +18,8 @@ namespace Prime31
 	/// </summary>
 	[AttributeUsageAttribute( AttributeTargets.Method )]
 	public class MakeButtonAttribute : Attribute
-	{}
+	{
+	}
 
 
 	/// <summary>
@@ -27,6 +28,7 @@ namespace Prime31
 	/// </summary>
 	[AttributeUsageAttribute( AttributeTargets.Field )]
 	public class Vector3Inspectable : Attribute
-	{}
+	{
+	}
 
 }

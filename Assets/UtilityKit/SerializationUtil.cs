@@ -15,6 +15,7 @@ namespace Prime31
 	public static class SerializationUtil
 	{
 		static SurrogateSelector _surrogateSelector;
+
 		static SurrogateSelector surrogateSelector
 		{
 			get
@@ -172,18 +173,18 @@ namespace Prime31
 
 
 		// why? http://answers.unity3d.com/questions/8480/how-to-scrip-a-saveload-game-option.html
-		sealed class VersionSerializationBinder : SerializationBinder 
-		{ 
+		sealed class VersionSerializationBinder : SerializationBinder
+		{
 			public override Type BindToType( string assemblyName, string typeName )
 			{ 
-				if( !string.IsNullOrEmpty( assemblyName ) && !string.IsNullOrEmpty( typeName ) ) 
+				if( !string.IsNullOrEmpty( assemblyName ) && !string.IsNullOrEmpty( typeName ) )
 				{ 
 					assemblyName = Assembly.GetExecutingAssembly().FullName;
 					return Type.GetType( String.Format( "{0}, {1}", typeName, assemblyName ) ); 
 				} 
 
 				return null; 
-			} 
+			}
 		}
 
 		#endregion
