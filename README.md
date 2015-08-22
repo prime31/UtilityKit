@@ -16,19 +16,20 @@ Generic Object Editor that provides the default inspector along with some additi
 
 #### StripGeneratedSolutionSettings
 
-Fixes the cruft that Unity injects into MonoDevelop solution files
+Fixes the cruft that Unity injects into MonoDevelop solution files. Hopefully won't be needed starting with Unity 5.2 if all goes well...
 
 
 
 #### MathHelpers
 
-Various mathy helpers that I find myself using often
+Various math helpers that I find myself using often
 
 
 
 ### AutoSnap
 
 Handy utility that lets you get proper snapping with a 0, 0, 0 origin. Enable it via the Edit -> Auto Snap menu item.
+
 
 
 #### ConstantsGeneratorKit
