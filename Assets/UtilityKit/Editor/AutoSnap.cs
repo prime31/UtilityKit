@@ -1,114 +1,157 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEditor;
+using System.Linq;
 
 
-namespace Prime31 {
-
-public class AutoSnap : EditorWindow
+namespace Prime31Editor
 {
-	private static bool _addedUpdateDelegate;
-
-	private Vector3 prevPosition;
-	private Vector3 prevRotation;
-	private bool doSnap = true;
-	private bool doRotateSnap = true;
-	private float snapValue = 1f;
-	private float snapOffset = 0f;
-	private float snapRotateValue = 15f;
-
-
-	[MenuItem( "Edit/Auto Snap %_l" )]
-	static void Init()
+	public class AutoSnap : EditorWindow
 	{
-		var window = (AutoSnap)EditorWindow.GetWindow( typeof( AutoSnap ) );
-		window.maxSize = new Vector2( 200, 100 );
-	}
+		static bool _didAddUpdateDelegate;
+		const string _kUseUtilityWindowPrefsKey = "auto-snap-use-utility-window";
+		const string _kShouldSnapPositionKey = "auto-snap-should-snap-position";
+		const string _kSnapValueKey = "auto-snap-position-value";
+		const string _kSnapOffsetKey = "auto-snap-position-offset";
+
+		Transform _lastTransform;
+		Vector3 _lastPosition;
+		Vector3 _prevRotation;
+		bool _shouldSnapPosition = true;
+		bool _shouldSnapRotation = false;
+		float _snapPositionValue = 1f;
+		float _snapPositionOffset = 0f;
+		float _snapRotateValue = 15f;
+		bool _useUtilityWindowType = false;
 
 
-	public void OnGUI()
-	{
-		doSnap = EditorGUILayout.Toggle( "Auto Snap", doSnap );
-		doRotateSnap = EditorGUILayout.Toggle ("Auto Snap Rotation", doRotateSnap );
-		snapValue = EditorGUILayout.FloatField( "Snap Value", snapValue );
-		snapOffset = EditorGUILayout.FloatField( "Snap Offset", snapOffset );
-		snapRotateValue = EditorGUILayout.FloatField( "Rotation Snap Value", snapRotateValue );
-
-		if( !doSnap && !doRotateSnap )
-			OnDisable();
-	}
-
-
-	public void OnEnable()
-	{
-		if( !_addedUpdateDelegate )
+		[MenuItem( "Edit/Auto Snap %_l" )]
+		static void Init()
 		{
-			_addedUpdateDelegate = true;
-			EditorApplication.update += Update;
-		}
-	}
+			var useUtilityWindowType = EditorPrefs.GetBool( _kUseUtilityWindowPrefsKey, false );
+			var window = EditorWindow.GetWindow<AutoSnap>( useUtilityWindowType );
+			window._useUtilityWindowType = useUtilityWindowType;
 
-
-	public void OnDisable()
-	{
-		if( _addedUpdateDelegate )
-		{
-			_addedUpdateDelegate = false;
-			EditorApplication.update -= Update;
-		}
-	}
-
-
-	public void Update()
-	{
-		if ( doSnap
-		    && !EditorApplication.isPlaying
-		    && Selection.transforms.Length > 0
-		    && Selection.transforms[0].position != prevPosition )
-		{
-			snapPositionForSelectedTransforms();
-			prevPosition = Selection.transforms[0].position;
+			window.maxSize = new Vector2( 200, useUtilityWindowType ? 140 : 130 );
+			window.minSize = window.maxSize;
 		}
 
-		if ( doRotateSnap
-		    && !EditorApplication.isPlaying
-		    && Selection.transforms.Length > 0
-		    && Selection.transforms[0].eulerAngles != prevRotation )
+
+		void OnGUI()
 		{
-			snapRotationForSelectedTransforms();
-			prevRotation = Selection.transforms[0].eulerAngles;
+			EditorGUI.BeginChangeCheck();
+			_shouldSnapPosition = EditorGUILayout.Toggle( "Snap Position", _shouldSnapPosition );
+			if( EditorGUI.EndChangeCheck() )
+				EditorPrefs.SetBool( _kShouldSnapPositionKey, _shouldSnapPosition );
+
+			EditorGUI.BeginChangeCheck();
+			_snapPositionValue = EditorGUILayout.FloatField( "Snap Value", _snapPositionValue );
+			if( EditorGUI.EndChangeCheck() )
+				EditorPrefs.SetFloat( _kSnapValueKey, _snapPositionValue );
+
+			EditorGUI.BeginChangeCheck();
+			_snapPositionOffset = EditorGUILayout.FloatField( "Snap Offset", _snapPositionOffset );
+			if( EditorGUI.EndChangeCheck() )
+				EditorPrefs.SetFloat( _kSnapOffsetKey, _snapPositionOffset );
+
+			EditorGUILayout.Separator();
+
+			_shouldSnapRotation = EditorGUILayout.Toggle( "Snap Rotation (not implemented)", _shouldSnapRotation );
+			_snapRotateValue = EditorGUILayout.FloatField( "Rotation Snap Value", _snapRotateValue );
+
+			EditorGUILayout.Separator();
+
+			EditorGUI.BeginChangeCheck();
+			_useUtilityWindowType = EditorGUILayout.Toggle( "Use Floating Window", _useUtilityWindowType );
+			if( EditorGUI.EndChangeCheck() )
+			{
+				EditorPrefs.SetBool( _kUseUtilityWindowPrefsKey, _useUtilityWindowType );
+				EditorUtility.DisplayDialog( "Auto Snap Window Type Change", "Window type changes will not take affect until you close and reopen the window", "Got It" );
+			}
 		}
-	}
 
 
-	private void snapPositionForSelectedTransforms()
-	{
-		foreach( var transform in Selection.transforms )
+		void OnEnable()
 		{
-			var t = transform.position;
-			t.x = snapAndRound( t.x, snapValue ) + snapOffset;
-			t.y = snapAndRound( t.y, snapValue ) + snapOffset;
-			t.z = snapAndRound( t.z, snapValue ) + snapOffset;
-			transform.position = t;
+			if( !_didAddUpdateDelegate )
+			{
+				_didAddUpdateDelegate = true;
+				SceneView.onSceneGUIDelegate += onSceneGUI;
+			}
+
+			// load up prefs
+			_shouldSnapPosition = EditorPrefs.GetBool( _kShouldSnapPositionKey, _shouldSnapPosition );
+			_snapPositionValue = EditorPrefs.GetFloat( _kSnapValueKey, _snapPositionValue );
+			_snapPositionOffset = EditorPrefs.GetFloat( _kSnapOffsetKey, _snapPositionOffset );
 		}
-	}
 
 
-	private void snapRotationForSelectedTransforms()
-	{
-		foreach( var transform in Selection.transforms )
+		void OnDisable()
 		{
-			var r = transform.eulerAngles;
-			r.x = snapAndRound( r.x, snapRotateValue );
-			r.y = snapAndRound( r.y, snapRotateValue );
-			r.z = snapAndRound( r.z, snapRotateValue );
-			transform.eulerAngles = r;
+			if( _didAddUpdateDelegate )
+			{
+				_didAddUpdateDelegate = false;
+				SceneView.onSceneGUIDelegate -= onSceneGUI;
+			}
 		}
-	}
+			
 
-	private float snapAndRound( float input, float snap )
-	{
-		return snap * Mathf.RoundToInt( ( input / snap ) );
-	}
+		void onSceneGUI( SceneView sceneView )
+		{
+			// don't snap in play mode or if snap isnt enabled
+			if( !_shouldSnapPosition || EditorApplication.isPlayingOrWillChangePlaymode )
+				return;
 
-}}
+			// Always keep track of the selection
+			if( !Selection.transforms.Contains( _lastTransform ) )
+			{
+				if( Selection.activeTransform )
+				{
+					_lastTransform = Selection.activeTransform;
+					_lastPosition = Selection.activeTransform.position;
+				}
+			}
+
+			// do the actual snapping
+			if( Selection.activeTransform )
+			{		
+				if( _lastTransform.position != _lastPosition )
+				{
+					Transform selected = _lastTransform;
+
+					var oldPosition = selected.position;
+					selected.position = snapValue( oldPosition );
+
+					// offset all selected transforms
+					var offset = selected.position - oldPosition;
+					foreach( var trans in Selection.transforms )
+					{
+						if( trans != selected )
+							trans.position += offset;
+					}
+
+
+					_lastPosition = selected.position;
+				}
+			}
+		}
+
+
+		Vector3 snapValue( Vector3 vec )
+		{
+			return new Vector3
+			(
+				_snapPositionValue * Mathf.Round( vec.x / _snapPositionValue ) + _snapPositionOffset,
+				_snapPositionValue * Mathf.Round( vec.y / _snapPositionValue ) + _snapPositionOffset,
+				_snapPositionValue * Mathf.Round( vec.z / _snapPositionValue ) + _snapPositionOffset
+			);
+		}
+
+
+		float snap( float val )
+		{
+			return _snapPositionValue * Mathf.Round( val / _snapPositionValue ) + _snapPositionOffset;
+		}
+
+	}
+}

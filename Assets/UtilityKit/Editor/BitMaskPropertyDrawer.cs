@@ -1,9 +1,10 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using Prime31;
 
 
-namespace Prime31
+namespace Prime31Editor
 {
 	[CustomPropertyDrawer( typeof( BitMaskAttribute ) )]
 	public class BitMaskPropertyDrawer : PropertyDrawer

@@ -65,8 +65,8 @@ namespace Prime31Editor
 
 			if( _onInspectorGuiMethod != null )
 			{
-				foreach( var eachTarget in targets )
-					_onInspectorGuiMethod.Invoke( eachTarget, new object[0] );
+				foreach( var target in targets )
+					_onInspectorGuiMethod.Invoke( target, new object[0] );
 			}
 
 
@@ -93,6 +93,8 @@ namespace Prime31Editor
 
 		void vector3OnSceneGUI()
 		{
+			Undo.RecordObject( target, "Vector3 Editor" );
+
 			foreach( var field in _fields )
 			{
 				var value = field.GetValue( target );
