@@ -41,3 +41,11 @@ Handy utility that lets you get proper snapping with a 0, 0, 0 origin. Enable it
 #### ConstantsGeneratorKit
 
 Generates constant classes for Layers, Resources, Scenes, Tags and SortingLayers. No more naked strings all over the place! It has it's own README markdown file with more information.
+
+
+
+
+
+#### Note
+
+Don't use the images included in this repo. They are copyright some other people. They were foraged from Google and included only for demonstration purposes!
