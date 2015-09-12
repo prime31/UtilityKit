@@ -1,22 +1,22 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityEngine.Assertions;
+using UnityEngine.Events;
 
-
-// ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
-// ##### WARNING: THIS CLASS AND ITS EDITOR ARE NOT COMPLETE AND ARE JUST A WORK IN PROGRESS!
-// ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
 
 namespace Prime31
 {
-	// based on the SpriteAnimator by Alec Holowka
 	[RequireComponent( typeof( SpriteRenderer ) )]
 	public class SpriteAnimator : MonoBehaviour
 	{
 		[System.Serializable]
 		public class AnimationTrigger
 		{
+			[System.Serializable]
+			public class AnimationEvent : UnityEvent<int> {}
+
 			public int frame;
-			public string name;
+			public AnimationEvent onEnteredFrame;
 		}
 
 
@@ -24,24 +24,54 @@ namespace Prime31
 		public class Animation
 		{
 			public string name;
-			public int fps = 5;
+			public float fps = 5;
+			public bool loop;
+			public bool pingPong;
+			public float delay = 0f;
 			public Sprite[] frames;
 			public AnimationTrigger[] triggers;
+
+			[System.NonSerialized][HideInInspector]
+			public float secondsPerFrame;
+			[System.NonSerialized][HideInInspector]
+			public float iterationDuration;
+			[System.NonSerialized][HideInInspector]
+			public float totalDuration;
+
+
+			public void prepareForUse()
+			{
+				secondsPerFrame = 1f / fps;
+				iterationDuration = secondsPerFrame * (float)frames.Length;
+
+				if( loop )
+					totalDuration = Mathf.Infinity;
+				else if( pingPong )
+					totalDuration = iterationDuration * 2f;
+				else
+					totalDuration = iterationDuration;
+			}
 		}
 
 
 		public Animation[] animations;
 		public bool isPlaying { get; private set; }
-		public Animation currentAnimation { get; private set; }
 		public int currentFrame { get; private set; }
-		public bool loop { get; private set; }
 		[HideInInspector]
 		[SerializeField]
 		public string playAnimationOnStart;
 
+		Transform _transform;
+		Animation _currentAnimation;
 		SpriteRenderer _spriteRenderer;
-		float _timer;
-		float _frameDuration;
+
+		float _totalElapsedTime;
+		float _elapsedDelay;
+		int _completedIterations;
+		bool _delayComplete;
+		bool _isReversed;
+		bool _isLoopingBackOnPingPong;
+
 
 
 		#region MonoBehavior
@@ -49,87 +79,165 @@ namespace Prime31
 		void Awake()
 		{
 			_spriteRenderer = GetComponent<SpriteRenderer>();
-		}
+			_transform = gameObject.transform;
 
-
-		void OnEnable()
-		{
 			if( playAnimationOnStart != string.Empty )
-				Play( playAnimationOnStart );
+				play( playAnimationOnStart );
 		}
 
 
 		void OnDisable()
 		{
 			isPlaying = false;
-			currentAnimation = null;
+			_currentAnimation = null;
 		}
 
 
 		void Update()
 		{
-			if( currentAnimation == null )
+			if( _currentAnimation == null || !isPlaying )
 				return;
-			
-			//while( loop || currentFrame < currentAnimation.frames.Length - 1 )
-			var desiredFrame = Mathf.FloorToInt( _timer / _frameDuration );
-			//Debug.Log( "timer: " + _timer + ", desiredFrame: " + desiredFrame + ", currentFrame: " + currentFrame );
-			_timer += Time.deltaTime;
 
-			if( currentFrame != desiredFrame )
+			// handle delay
+			if( !_delayComplete && _elapsedDelay < _currentAnimation.delay )
 			{
-				nextFrame( currentAnimation );
-				_spriteRenderer.sprite = currentAnimation.frames[currentFrame];
+				_elapsedDelay += Time.deltaTime;
+				if( _elapsedDelay >= _currentAnimation.delay )
+					_delayComplete = true;
+				
+				return;
 			}
 
-			if( !loop && currentFrame == currentAnimation.frames.Length - 1 )
-				currentAnimation = null;
+			// count backwards if we are going in reverse
+			if( _isReversed )
+				_totalElapsedTime -= Time.deltaTime;
+			else
+				_totalElapsedTime += Time.deltaTime;
+
+
+			_totalElapsedTime = Mathf.Clamp( _totalElapsedTime, 0f, _currentAnimation.totalDuration );
+			_completedIterations = Mathf.FloorToInt( _totalElapsedTime / _currentAnimation.iterationDuration );
+			_isLoopingBackOnPingPong = false;
+
+
+			// handle ping pong loops. if loop is false but pingPongLoop is true we allow a single forward-then-backward iteration
+			if( _currentAnimation.pingPong )
+			{
+				if( _currentAnimation.loop || _completedIterations < 2 )
+					_isLoopingBackOnPingPong = _completedIterations % 2 != 0;
+			}
+
+
+			var elapsedTime = 0f;
+			if( _totalElapsedTime < _currentAnimation.iterationDuration )
+			{
+				elapsedTime = _totalElapsedTime;
+			}
+			else
+			{
+				elapsedTime = _totalElapsedTime % _currentAnimation.iterationDuration;
+			}
+
+
+			// if we reversed the animation and we reached 0 total elapsed time handle un-reversing things and loop continuation
+			if( _isReversed && _totalElapsedTime <= 0 )
+			{
+				_isReversed = false;
+
+				if( _currentAnimation.loop )
+				{
+					_totalElapsedTime = 0f;
+				}
+				else
+				{
+					isPlaying = false;
+					return;
+				}
+			}
+
+
+			// time goes backwards when we are reversing a ping-pong loop
+			if( _isLoopingBackOnPingPong )
+				elapsedTime = _currentAnimation.iterationDuration - elapsedTime;
+
+
+			// fetch our desired frame
+			var desiredFrame = Mathf.FloorToInt( elapsedTime / _currentAnimation.secondsPerFrame );
+			if( desiredFrame != currentFrame )
+			{
+				currentFrame = desiredFrame;
+				_spriteRenderer.sprite = _currentAnimation.frames[currentFrame];
+				handleFrameChanged();
+
+				// ping-pong needs special care. we don't want to double the frame time when wrapping so we man-handle the totalElapsedTime
+				if( _currentAnimation.pingPong && ( currentFrame == 0 || currentFrame == _currentAnimation.frames.Length - 1 ) )
+				{
+					if( _isReversed )
+						_totalElapsedTime -= _currentAnimation.secondsPerFrame;
+					else
+						_totalElapsedTime += _currentAnimation.secondsPerFrame;
+				}
+			}
 		}
 
 		#endregion
 
 
-		public void Play( string name, bool loop = true, int startFrame = 0 )
+		#region Playback control
+
+		public void play( string name, int startFrame = 0 )
 		{
 			var animation = getAnimation( name );
 			if( animation != null )
 			{
-				if( animation != currentAnimation )
-				{
-					ForcePlay( name, loop, startFrame );
-				}
-			}
-			else
-			{
-				Debug.LogWarning( "could not find animation: " + name );
-			}
-		}
+				animation.prepareForUse();
 
-
-		public void ForcePlay( string name, bool loop = true, int startFrame = 0 )
-		{
-			var animation = getAnimation( name );
-			if( animation != null )
-			{
-				this.loop = loop;
-				currentAnimation = animation;
+				_currentAnimation = animation;
 				isPlaying = true;
+				_isReversed = false;
 				currentFrame = startFrame;
 				_spriteRenderer.sprite = animation.frames[currentFrame];
 
-				_timer = 0f;
-				_frameDuration = 1f / (float)currentAnimation.fps;
+				_totalElapsedTime = (float)startFrame * _currentAnimation.secondsPerFrame;
 			}
 		}
 
 
 		public bool isAnimationPlaying( string name )
 		{
-			return ( currentAnimation != null && currentAnimation.name == name );
+			return ( _currentAnimation != null && _currentAnimation.name == name );
 		}
 
 
-		public Animation getAnimation( string name )
+		public void pause()
+		{
+			isPlaying = false;
+		}
+
+
+		public void unPause()
+		{
+			isPlaying = true;
+		}
+
+
+		public void reverseAnimation()
+		{
+			_isReversed = !_isReversed;
+		}
+
+
+		public void stop()
+		{
+			isPlaying = false;
+			_spriteRenderer.sprite = null;
+			_currentAnimation = null;
+		}
+
+		#endregion
+
+
+		Animation getAnimation( string name )
 		{
 			for( var i = 0; i < animations.Length; i++ )
 			{
@@ -137,58 +245,55 @@ namespace Prime31
 					return animations[i];
 			}
 
+			Debug.LogError( "Animation [" + name + "] does not exist" );
+
 			return null;
 		}
 
 
-		void nextFrame( Animation animation )
+		void handleFrameChanged()
 		{
-			currentFrame++;
-			foreach( var animationTrigger in currentAnimation.triggers )
+			for( var i = 0; i < _currentAnimation.triggers.Length; i++ )
 			{
-				if( animationTrigger.frame == currentFrame )
-				{
-					gameObject.SendMessageUpwards( animationTrigger.name );
-				}
-			}
-
-			if( currentFrame >= animation.frames.Length )
-			{
-				if( loop )
-				{
-					currentFrame = 0;
-					_timer = 0f;
-				}
-				else
-				{
-					currentFrame = animation.frames.Length - 1;
-				}
+				if( _currentAnimation.triggers[i].frame == currentFrame && _currentAnimation.triggers[i].onEnteredFrame != null )
+					_currentAnimation.triggers[i].onEnteredFrame.Invoke( currentFrame );
 			}
 		}
 
 
-		public int GetFacing()
+		public int getFacing()
 		{
-			return (int)Mathf.Sign( _spriteRenderer.transform.localScale.x );
+			return (int)Mathf.Sign( _transform.localScale.x );
 		}
 
 
-		public void flipTo( float dir )
+		public void flip()
 		{
-			if( dir < 0f )
-				_spriteRenderer.transform.localScale = new Vector3( -1f, 1f, 1f );
-			else
-				_spriteRenderer.transform.localScale = new Vector3( 1f, 1f, 1f );
+			var scale = _transform.localScale;
+			scale.x *= -1f;
+			_transform.localScale = scale;
 		}
 
 
-		public void flipTo( Vector3 position )
+		public void faceLeft()
 		{
-			float diff = position.x - transform.position.x;
-			if( diff < 0f )
-				_spriteRenderer.transform.localScale = new Vector3( -1f, 1f, 1f );
-			else
-				_spriteRenderer.transform.localScale = new Vector3( 1f, 1f, 1f );
+			var scale = _transform.localScale;
+			if( scale.x > 0f )
+			{
+				scale.x *= -1f;
+				_transform.localScale = scale;
+			}
+		}
+
+
+		public void faceRight()
+		{
+			var scale = _transform.localScale;
+			if( scale.x < 0f )
+			{
+				scale.x *= -1f;
+				_transform.localScale = scale;
+			}
 		}
 	
 	}

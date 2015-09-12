@@ -19,21 +19,76 @@ namespace Prime31
 		string[] _animationNames;
 		string[] _animationNamesForInspector;
 
+		// state for the preview GUI
+		Texture _playButton;
+		Texture _pauseButton;
+		bool _isPlaying;
+		SpriteAnimator.Animation _currentAnimation;
+		float _startTime;
+		float _lastUpdateTime;
+		bool _didWireEditorUpdate;
+
 
 		public override void OnInspectorGUI()
 		{
+			if( Application.isPlaying )
+			{
+				onInspectorGUIPlayMode();
+				return;
+			}
+
 			DrawDefaultInspector();
 
 			validateData();
 
+			EditorGUILayout.Space();
+
 			EditorGUI.BeginChangeCheck();
-			_selectedAnimation = EditorGUILayout.Popup( "Play Animation on Start", _selectedAnimation, _animationNamesForInspector );
+			_selectedAnimation = EditorGUILayout.Popup( "Play on Start", _selectedAnimation, _animationNamesForInspector );
 			if( EditorGUI.EndChangeCheck() )
 			{
 				if( _selectedAnimation == 0 )
+				{
 					_spriteAnimator.playAnimationOnStart = string.Empty;
+				}
 				else
+				{
 					_spriteAnimator.playAnimationOnStart = _animationNames[_selectedAnimation - 1];
+
+					var animation = _spriteAnimator.animations.Where( a => a.name == _spriteAnimator.playAnimationOnStart ).First();
+					if( animation.frames.Length > 0 )
+						_spriteRenderer.sprite = animation.frames[0];
+				}
+			}
+		}
+
+
+		void onInspectorGUIPlayMode()
+		{
+			_isPlaying = false;
+
+			EditorGUILayout.Space();
+			GUILayout.Label( "Playback Controls", EditorStyles.boldLabel );
+
+			if( GUILayout.Button( "Reverse Animation" ) )
+				_spriteAnimator.reverseAnimation();
+
+			if( GUILayout.Button( "Pause" ) )
+				_spriteAnimator.pause();
+
+			if( GUILayout.Button( "Unpause" ) )
+				_spriteAnimator.unPause();
+
+			if( GUILayout.Button( "Stop" ) )
+				_spriteAnimator.stop();
+
+			EditorGUILayout.Space();
+			GUILayout.Label( "Animations", EditorStyles.boldLabel );
+
+			for( var i = 0; i < _spriteAnimator.animations.Length; i++ )
+			{
+				if( GUILayout.Button( "Play " + _spriteAnimator.animations[i].name ) )
+					_spriteAnimator.play( _spriteAnimator.animations[i].name );
 			}
 		}
 
@@ -62,6 +117,9 @@ namespace Prime31
 						}
 					}
 				}
+
+				// set the animation for the preview
+				_currentAnimation = _spriteAnimator.animations.Where( a => a.name == _animationNames[_selectedAnimationForPreview] ).First();
 			}
 		}
 
@@ -69,6 +127,20 @@ namespace Prime31
 		void OnEnable()
 		{
 			validateData();
+
+			_playButton = EditorGUIUtility.Load( "icons/Animation.Play.png" ) as Texture;
+			_pauseButton = EditorGUIUtility.Load( "icons/PauseButton Anim.png" ) as Texture;
+			_isPlaying = false;
+		}
+
+
+		void OnDisable()
+		{
+			if( _didWireEditorUpdate )
+			{
+				_didWireEditorUpdate = false;
+				EditorApplication.update -= editorUpdate;
+			}
 		}
 
 
@@ -87,8 +159,42 @@ namespace Prime31
 					EditorGUI.DropShadowLabel( rect, "Sprite Renderer Required" );
 					return;
 				}
-					
-				var sprite = _spriteRenderer.sprite;
+
+				if( _spriteRenderer.sprite == null )
+				{
+					EditorGUI.DropShadowLabel( rect, "Sprite is null" );
+					return;
+				}
+
+
+
+				Sprite sprite = null;
+
+				// handle the play/pause of the animation from the preview GUI
+				if( _currentAnimation != null )
+				{
+					var desiredFrame = 0;
+					if( _isPlaying )
+					{
+						_lastUpdateTime = Time.realtimeSinceStartup;
+						var elapsedTime = Time.realtimeSinceStartup - _startTime;
+						desiredFrame = Mathf.FloorToInt( elapsedTime / ( 1f / _currentAnimation.fps ) );
+
+						if( desiredFrame >= _currentAnimation.frames.Length )
+						{
+							desiredFrame = 0;
+							_startTime = Time.realtimeSinceStartup;
+						}
+					}
+						
+					sprite = _currentAnimation.frames[desiredFrame];
+				}
+				else
+				{
+					sprite = _spriteRenderer.sprite;
+				}
+
+
 				var texture = sprite.texture;
 				var textureRect = sprite.textureRect;
 				var textureCoords = new Rect( textureRect.x / texture.width, textureRect.y / texture.height, textureRect.width / texture.width, textureRect.height / texture.height );
@@ -109,6 +215,7 @@ namespace Prime31
 				}
 
 				GUI.DrawTextureWithTexCoords( textureDisplayRect, texture, textureCoords );
+				EditorGUI.DropShadowLabel( rect, "WARNING: This is still a WIP!" );
 			}
 		}
 
@@ -119,7 +226,41 @@ namespace Prime31
 			_selectedAnimationForPreview = EditorGUILayout.Popup( _selectedAnimationForPreview, _animationNames );
 			if( EditorGUI.EndChangeCheck() )
 			{
-				Debug.Log( _animationNames[_selectedAnimationForPreview] + ", " + Time.realtimeSinceStartup );
+				_currentAnimation = _spriteAnimator.animations.Where( a => a.name == _animationNames[_selectedAnimationForPreview] ).First();
+			}
+
+
+			if( GUILayout.Button( _isPlaying ? _pauseButton : _playButton, EditorStyles.miniButton ) )
+			{
+				_startTime = Time.realtimeSinceStartup;
+				_isPlaying = !_isPlaying;
+
+				if( _isPlaying )
+				{
+					_didWireEditorUpdate = true;
+					EditorApplication.update += editorUpdate;
+				}
+				else if( _didWireEditorUpdate )
+				{
+					_didWireEditorUpdate = false;
+					EditorApplication.update -= editorUpdate;
+				}
+			}
+		}
+
+
+		/// <summary>
+		/// this is used to force repaints when we need a new frame in the preview GUI
+		/// </summary>
+		void editorUpdate()
+		{
+			if( _currentAnimation != null && _isPlaying )
+			{
+				var secondsPerFrame = 1f / _currentAnimation.fps;
+				if( _lastUpdateTime + secondsPerFrame < Time.realtimeSinceStartup )
+				{
+					Repaint();
+				}
 			}
 		}
 
