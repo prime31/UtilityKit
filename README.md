@@ -9,6 +9,12 @@ Wrapper for dealing with BinaryFormatter in a way that works on AOT/IL2CPP and r
 
 
 
+#### SpriteAnimator
+
+Replacement for having to deal with Mecanim, animation clips and all that crap. Drop it on a GameObject with a SpriteRenderer and you can create animations via drag-and-drop of some sprites. Nice and simple.
+
+
+
 #### ObjectInspector
 
 Generic Object Editor that provides the default inspector along with some additional goodies like Vector3 collection editing in the scene view and clickable buttons to call methods. Implement the empty IObjectInspectable interface and the ObjectInspector will be used for your class. You can even provide implementations of OnInspectorGUI and OnSceneGUI right in your class when using the ObjectInspector saving the trouble of making separate classes for inspectors. See the ObjectInspectorExample in the demo scene for usage examples.
@@ -26,7 +32,7 @@ Various math helpers that I find myself using often
 
 
 
-### AutoSnap
+#### AutoSnap
 
 Handy utility that lets you get proper snapping with a 0, 0, 0 origin. Enable it via the Edit -> Auto Snap menu item.
 
