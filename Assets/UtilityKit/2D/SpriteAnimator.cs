@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine.Assertions;
 using UnityEngine.Events;
 
@@ -23,24 +23,38 @@ namespace Prime31
 		[System.Serializable]
 		public class Animation
 		{
+			public enum AnimationCompletionBehavior
+			{
+				RemainOnFinalFrame,
+				RevertToFirstFrame,
+				HideSprite
+			}
+
 			public string name;
 			public float fps = 5;
 			public bool loop;
 			public bool pingPong;
 			public float delay = 0f;
+			public AnimationCompletionBehavior completionBehavior;
 			public Sprite[] frames;
 			public AnimationTrigger[] triggers;
 
-			[System.NonSerialized][HideInInspector]
+			[System.NonSerialized, HideInInspector]
 			public float secondsPerFrame;
-			[System.NonSerialized][HideInInspector]
+			[System.NonSerialized, HideInInspector]
 			public float iterationDuration;
-			[System.NonSerialized][HideInInspector]
+			[System.NonSerialized, HideInInspector]
 			public float totalDuration;
+
+			bool _hasBeenPreparedForUse;
+			HashSet<int> _framesWithTriggers;
 
 
 			public void prepareForUse()
 			{
+				if( _hasBeenPreparedForUse )
+					return;
+				
 				secondsPerFrame = 1f / fps;
 				iterationDuration = secondsPerFrame * (float)frames.Length;
 
@@ -50,6 +64,22 @@ namespace Prime31
 					totalDuration = iterationDuration * 2f;
 				else
 					totalDuration = iterationDuration;
+
+				// prep our trigger lookup helper
+				_framesWithTriggers = new HashSet<int>();
+				for( var i = 0; i < triggers.Length; i++ )
+				{
+					if( triggers[i].onEnteredFrame.GetPersistentEventCount() > 0 )
+						_framesWithTriggers.Add( triggers[i].frame );
+				}
+
+				_hasBeenPreparedForUse = true;
+			}
+
+
+			public bool frameContainsTrigger( int frame )
+			{
+				return _framesWithTriggers.Contains( frame );
 			}
 		}
 
@@ -57,14 +87,15 @@ namespace Prime31
 		public Animation[] animations;
 		public bool isPlaying { get; private set; }
 		public int currentFrame { get; private set; }
-		[HideInInspector]
-		[SerializeField]
+		[SerializeField, HideInInspector]
 		public string playAnimationOnStart;
 
+		// cached goodies
 		Transform _transform;
 		Animation _currentAnimation;
 		SpriteRenderer _spriteRenderer;
 
+		// playback state
 		float _totalElapsedTime;
 		float _elapsedDelay;
 		int _completedIterations;
@@ -136,6 +167,29 @@ namespace Prime31
 			else
 			{
 				elapsedTime = _totalElapsedTime % _currentAnimation.iterationDuration;
+
+				// if we arent looping and elapsedTimei is 0 we are done. Handle it appropriately
+				if( !_currentAnimation.loop && elapsedTime == 0 )
+				{
+					isPlaying = false;
+
+					switch( _currentAnimation.completionBehavior )
+					{
+						case Animation.AnimationCompletionBehavior.RemainOnFinalFrame:
+						{
+							return;
+						}
+						case Animation.AnimationCompletionBehavior.RevertToFirstFrame:
+						{
+							break;
+						}
+						case Animation.AnimationCompletionBehavior.HideSprite:
+						{
+							_spriteRenderer.sprite = null;
+							return;
+						}
+					}
+				}
 			}
 
 
@@ -154,7 +208,6 @@ namespace Prime31
 					return;
 				}
 			}
-
 
 			// time goes backwards when we are reversing a ping-pong loop
 			if( _isLoopingBackOnPingPong )
@@ -185,21 +238,53 @@ namespace Prime31
 
 		#region Playback control
 
-		public void play( string name, int startFrame = 0 )
+		/// <summary>
+		/// fetches the animationIndex for the given animationName. Use this to cache the indices to avoid strings!
+		/// </summary>
+		/// <returns>The index for animation name.</returns>
+		/// <param name="animationName">Animation name.</param>
+		public int animationIndexForAnimationName( string animationName )
 		{
-			var animation = getAnimation( name );
-			if( animation != null )
+			for( var i = 0; i < animations.Length; i++ )
 			{
-				animation.prepareForUse();
-
-				_currentAnimation = animation;
-				isPlaying = true;
-				_isReversed = false;
-				currentFrame = startFrame;
-				_spriteRenderer.sprite = animation.frames[currentFrame];
-
-				_totalElapsedTime = (float)startFrame * _currentAnimation.secondsPerFrame;
+				if( animations[i].name == animationName )
+					return i;
 			}
+
+			Debug.LogError( "Animation [" + animationName + "] does not exist" );
+
+			return -1;
+		}
+
+
+		/// <summary>
+		/// plays the animation at the given index. You can cache the indices by calling animationIndexForAnimationName.
+		/// </summary>
+		/// <param name="animationIndex">Animation index.</param>
+		/// <param name="startFrame">Start frame.</param>
+		public void play( int animationIndex, int startFrame = 0 )
+		{
+			var animation = animations[animationIndex];
+
+			animation.prepareForUse();
+
+			_currentAnimation = animation;
+			isPlaying = true;
+			_isReversed = false;
+			currentFrame = startFrame;
+			_spriteRenderer.sprite = _currentAnimation.frames[currentFrame];
+
+			_totalElapsedTime = (float)startFrame * _currentAnimation.secondsPerFrame;
+		}
+
+
+		public void play( string animationName, int startFrame = 0 )
+		{
+			var animationIndex = animationIndexForAnimationName( animationName );
+
+			Assert.AreNotEqual<int>( -1, animationIndex, "You attempted to play an animation that doesnt exist!" );
+
+			play( animationIndex, startFrame );
 		}
 
 
@@ -253,13 +338,18 @@ namespace Prime31
 
 		void handleFrameChanged()
 		{
-			for( var i = 0; i < _currentAnimation.triggers.Length; i++ )
+			if( _currentAnimation.frameContainsTrigger( currentFrame ) )
 			{
-				if( _currentAnimation.triggers[i].frame == currentFrame && _currentAnimation.triggers[i].onEnteredFrame != null )
-					_currentAnimation.triggers[i].onEnteredFrame.Invoke( currentFrame );
+				for( var i = 0; i < _currentAnimation.triggers.Length; i++ )
+				{
+					if( _currentAnimation.triggers[i].frame == currentFrame )
+						_currentAnimation.triggers[i].onEnteredFrame.Invoke( currentFrame );
+				}
 			}
 		}
 
+
+		#region Sprite direction helpers
 
 		public int getFacing()
 		{
@@ -296,5 +386,6 @@ namespace Prime31
 			}
 		}
 	
+		#endregion
 	}
 }

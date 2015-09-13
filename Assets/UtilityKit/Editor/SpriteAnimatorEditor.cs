@@ -311,6 +311,10 @@ namespace Prime31
 			_selectedIndex = selectedIndex;
 			_reorderableAnimationList.index = selectedIndex;
 
+			// update the preview GUI
+			_currentAnimation = _spriteAnimator.animations[selectedIndex];
+			_selectedAnimationForPreview = selectedIndex;
+
 			// prep the reorderable list
 			var selectedAnimation = _reorderableAnimationList.serializedProperty.GetArrayElementAtIndex( selectedIndex );
 			_reorderableFrameList = new ReorderableList( serializedObject, selectedAnimation.FindPropertyRelative( "frames" ) );
@@ -373,6 +377,7 @@ namespace Prime31
 				GUI.backgroundColor = Color.white;
 
 				EditorGUILayout.PropertyField( selectedProp.FindPropertyRelative( "fps" ), new GUIContent( "FPS" ) );
+				EditorGUILayout.PropertyField( selectedProp.FindPropertyRelative( "completionBehavior" ), new GUIContent( "Completion Behavior" ) );
 				EditorGUILayout.PropertyField( selectedProp.FindPropertyRelative( "loop" ), new GUIContent( "Loop" ) );
 				EditorGUILayout.PropertyField( selectedProp.FindPropertyRelative( "pingPong" ), new GUIContent( "Ping-Pong" ) );
 				EditorGUILayout.PropertyField( selectedProp.FindPropertyRelative( "delay" ), new GUIContent( "Delay" ) );
@@ -436,7 +441,7 @@ namespace Prime31
 		{
 			var evt = Event.current;
 			var dropArea = GUILayoutUtility.GetRect( 0f, 60f, GUILayout.ExpandWidth( true ) );
-			GUI.Box( dropArea, "Drop Sprite to add to animation", boxStyle );
+			GUI.Box( dropArea, "Drop Sprites to add to animation", boxStyle );
 
 			switch( evt.type )
 			{
@@ -559,7 +564,6 @@ namespace Prime31
 
 
 				drawSpriteInRect( sprite, rect );
-				EditorGUI.DropShadowLabel( rect, "WARNING: This is still a WIP!" );
 			}
 		}
 
@@ -591,7 +595,7 @@ namespace Prime31
 				}
 			}
 		}
-
+			
 
 		/// <summary>
 		/// this is used to force repaints when we need a new frame in the preview GUI
