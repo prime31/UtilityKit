@@ -10,13 +10,14 @@ namespace Prime31
 	public class SpriteAnimator : MonoBehaviour
 	{
 		[System.Serializable]
+		public class SpriteAnimationEvent : UnityEvent<int> {}
+
+
+		[System.Serializable]
 		public class AnimationTrigger
 		{
-			[System.Serializable]
-			public class AnimationEvent : UnityEvent<int> {}
-
 			public int frame;
-			public AnimationEvent onEnteredFrame;
+			public SpriteAnimationEvent onEnteredFrame;
 		}
 
 
@@ -85,6 +86,7 @@ namespace Prime31
 
 
 		public Animation[] animations;
+		public System.Action<int> onAnimationCompletedEvent;
 		public bool isPlaying { get; private set; }
 		public int currentFrame { get; private set; }
 		[SerializeField, HideInInspector]
@@ -171,6 +173,10 @@ namespace Prime31
 				// if we arent looping and elapsedTimei is 0 we are done. Handle it appropriately
 				if( !_currentAnimation.loop && elapsedTime == 0 )
 				{
+					// the animation id done so fire our event
+					if( onAnimationCompletedEvent != null )
+						onAnimationCompletedEvent( animationIndexForAnimationName( _currentAnimation.name ) );
+					
 					isPlaying = false;
 
 					switch( _currentAnimation.completionBehavior )
@@ -204,6 +210,10 @@ namespace Prime31
 				}
 				else
 				{
+					// the animation id done so fire our event
+					if( onAnimationCompletedEvent != null )
+						onAnimationCompletedEvent( animationIndexForAnimationName( _currentAnimation.name ) );
+					
 					isPlaying = false;
 					return;
 				}

@@ -6,8 +6,19 @@ using Prime31;
 
 public class DemoUI : MonoBehaviour
 {
+	SpriteAnimator _spriteAnimator;
+
+
+	void Awake()
+	{
+		_spriteAnimator = FindObjectOfType<SpriteAnimator>();
+		_spriteAnimator.onAnimationCompletedEvent += onAnimationEvent;
+	}
+
+
 	void OnGUI()
 	{
+		GUILayout.Label( "SerializationUtil" );
 		if( GUILayout.Button( "Serialize Object to Desktop" ) )
 		{
 			var obj = new ThingToSerialize();
@@ -21,36 +32,41 @@ public class DemoUI : MonoBehaviour
 			Debug.Log( obj );
 		}
 
+
+		GUILayout.Label( "Utils" );
 		if( GUILayout.Button( "map01 Example" ) )
 		{
 			// maps a number (75 in this case) from a range of 5 - 250 to a range of 0 - 1
 			Debug.Log( "mapped: " + MathHelpers.map01( 75f, 5f, 250f ) );
 		}
 
-		if( GUILayout.Button( "--- RESERVED SPACE FOR OTHER STUFF" ) )
-		{
 
+		GUILayout.Label( "SpriteAnimator" );
+		if( GUILayout.Button( "Sprite: Play walk-left Animation" ) )
+		{
+			var animationIndex = _spriteAnimator.animationIndexForAnimationName( "walk-left" );
+			_spriteAnimator.play( animationIndex );
 		}
 
-		if( GUILayout.Button( "" ) )
+		if( GUILayout.Button( "Sprite: Play blue-dude-walk-right Animation" ) )
 		{
-
+			//blue-dude-walk-right
+			var animationIndex = _spriteAnimator.animationIndexForAnimationName( "blue-dude-walk-right" );
+			_spriteAnimator.play( animationIndex );
 		}
 
-		if( GUILayout.Button( "" ) )
+		if( GUILayout.Button( "Sprite: Play blood-splatter Animation" ) )
 		{
-
+			//blood-splatter
+			var animationIndex = _spriteAnimator.animationIndexForAnimationName( "blood-splatter" );
+			_spriteAnimator.play( animationIndex );
 		}
+	}
 
-		if( GUILayout.Button( "" ) )
-		{
 
-		}
-
-		if( GUILayout.Button( "" ) )
-		{
-
-		}
+	void onAnimationEvent( int animationIndex )
+	{
+		Debug.Log( "an animation event fired for animation with animationIndex " + animationIndex );
 	}
 
 }

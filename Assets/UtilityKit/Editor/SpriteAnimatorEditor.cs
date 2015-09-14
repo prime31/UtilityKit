@@ -127,6 +127,7 @@ namespace Prime31
 			validateData();
 
 			EditorGUILayout.Space();
+			EditorGUILayout.Space();
 
 			EditorGUI.BeginChangeCheck();
 			_selectedAnimation = EditorGUILayout.Popup( "Play on Start", _selectedAnimation, _animationNamesForInspector );
@@ -146,9 +147,10 @@ namespace Prime31
 				}
 			}
 
+
 			EditorGUILayout.Space();
 
-			// reorderable list
+			// reorderable list for our animation list
 			serializedObject.Update();
 			_reorderableAnimationList.DoLayoutList();
 			serializedObject.ApplyModifiedProperties();
@@ -211,14 +213,14 @@ namespace Prime31
 					{
 						if( _spriteAnimator.animations[i].name == _spriteAnimator.playAnimationOnStart )
 						{
-							_selectedAnimation = i + 1; // we add one for the None element
+							_selectedAnimation = i;
 							break;
 						}
 					}
 				}
 
 				// set the animation for the preview
-				_currentAnimation = _spriteAnimator.animations.Where( a => a.name == _animationNames[_selectedAnimationForPreview] ).First();
+				_currentAnimation = _spriteAnimator.animations.Where( a => a.name == _animationNames[_selectedAnimation] ).First();
 			}
 		}
 
