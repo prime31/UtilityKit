@@ -52,7 +52,7 @@ namespace Prime31
 		/// <returns>The to nearest.</returns>
 		/// <param name="value">Value.</param>
 		/// <param name="roundToNearest">Round to nearest.</param>
-		public float roundToNearest( float value, float roundToNearest )
+		public static float roundToNearest( float value, float roundToNearest )
 		{
 			return Mathf.Round( value / roundToNearest ) * roundToNearest;
 		}
