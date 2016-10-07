@@ -42,7 +42,7 @@ namespace Prime31Editor
 		public static void rebuildConstantsClasses( bool buildResources = true, bool buildScenes = true, bool buildTagsAndLayers = true, bool buildSortingLayers = true )
 		{
 			var folderPath = Application.dataPath + "/" + FOLDER_LOCATION;
-			if( !Directory.Exists(folderPath ) )
+			if( !Directory.Exists( folderPath ) )
 				Directory.CreateDirectory( folderPath );
 
 			if( buildTagsAndLayers )
@@ -135,11 +135,11 @@ namespace Prime31Editor
 				output += "\n\t\tpublic const int " + TOTAL_SCENES_CONSTANT_NAME + " = " + labelsArray.Length + ";\n\n\n";
 
 				output += "\t\tpublic static int nextSceneIndex()\n";
-                output += "\t\t{\n";
-                output += "\t\t\tvar currentSceneIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;\n";
-                output += "\t\t\tif( currentSceneIndex + 1 == " + TOTAL_SCENES_CONSTANT_NAME + " )\n";
-                output += "\t\t\t\treturn 0;\n";
-                output += "\t\t\treturn currentSceneIndex + 1;\n";
+				output += "\t\t{\n";
+				output += "\t\t\tvar currentSceneIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;\n";
+				output += "\t\t\tif( currentSceneIndex + 1 == " + TOTAL_SCENES_CONSTANT_NAME + " )\n";
+				output += "\t\t\t\treturn 0;\n";
+				output += "\t\t\treturn currentSceneIndex + 1;\n";
 				output += "\t\t}\n";
 			}
 
@@ -159,9 +159,9 @@ namespace Prime31Editor
 			public Resource( string path )
 			{
 				// get the path from the Resources folder root with normalized slashes
-				string fullAssetsPath = Path.GetFullPath("Assets").Replace('\\', '/');
-				path = path.Replace('\\', '/');
-				path = path.Replace(fullAssetsPath, "");
+				string fullAssetsPath = Path.GetFullPath( "Assets" ).Replace( '\\', '/' );
+				path = path.Replace( '\\', '/' );
+				path = path.Replace( fullAssetsPath, "" );
 				var parts = path.Split( new string[] { "Resources/" }, StringSplitOptions.RemoveEmptyEntries );
 
 				// strip the extension from the path
@@ -213,7 +213,7 @@ namespace Prime31Editor
 					continue;
 				}
 
-				string constantName = formatConstVariableName(res.name);
+				string constantName = formatConstVariableName( res.name );
 				if( constantNamesAdded.Contains( constantName ) )
 				{
 					Debug.LogWarning( "multiple resources with constant name " + constantName + " found. Skipping " + res.path );
@@ -317,13 +317,14 @@ namespace Prime31Editor
 
 		private static string formatConstVariableName( string input )
 		{
-			switch ( CONSTANT_NAMING_STYLE ) {
-				case ConstantNamingStyle.UppercaseWithUnderscores:
-					return toUpperCaseWithUnderscores( input );
-				case ConstantNamingStyle.CamelCase:
-					return toCamelCase( input );
-				default:
-					return toUpperCaseWithUnderscores( input );
+			switch( CONSTANT_NAMING_STYLE )
+			{
+			case ConstantNamingStyle.UppercaseWithUnderscores:
+				return toUpperCaseWithUnderscores( input );
+			case ConstantNamingStyle.CamelCase:
+				return toCamelCase( input );
+			default:
+				return toUpperCaseWithUnderscores( input );
 			}
 		}
 
@@ -331,15 +332,16 @@ namespace Prime31Editor
 		{
 			input = input.Replace( " ", "" );
 
-			if ( char.IsLower(input[0]) )
+			if( char.IsLower( input[0] ) )
 				input = char.ToUpper( input[0] ) + input.Substring( 1 );
 
 			// uppercase letters before dash or underline
-			Func<char,int,string> func = ( x, i ) =>{
-				if ( x == '-' || x == '_' )
+			Func<char,int,string> func = ( x, i ) =>
+			{
+				if( x == '-' || x == '_' )
 					return "";
 
-				if( i > 0 && (input[i - 1] == '-' || input[i - 1] == '_') )
+				if( i > 0 && ( input[i - 1] == '-' || input[i - 1] == '_' ) )
 					return x.ToString().ToUpper();
 
 				return x.ToString();
@@ -361,7 +363,7 @@ namespace Prime31Editor
 			Func<char,int,string> func = ( x, i ) =>
 			{
 				if( i > 0 && char.IsUpper( x ) && char.IsLower( input[i - 1] ) )
-				return "_" + x.ToString();
+					return "_" + x.ToString();
 				return x.ToString();
 			};
 			input = string.Concat( input.Select( func ).ToArray() );
@@ -372,14 +374,15 @@ namespace Prime31Editor
 			return input.ToUpper();
 		}
 
-		private enum ConstantNamingStyle {
+		private enum ConstantNamingStyle
+		{
 			UppercaseWithUnderscores,
 			CamelCase
 		}
 	}
 
 
-#if !DISABLE_AUTO_GENERATION
+	#if !DISABLE_AUTO_GENERATION
 	// this post processor listens for changes to the TagManager and automatically rebuilds all classes if it sees a change
 	public class ConstandsGeneratorPostProcessor : AssetPostprocessor
 	{
@@ -425,6 +428,6 @@ namespace Prime31Editor
 			}
 		}
 	}
-#endif
+	#endif
 }
 #endif
