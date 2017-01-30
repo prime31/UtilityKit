@@ -29,6 +29,7 @@ namespace Prime31
 	[AttributeUsageAttribute( AttributeTargets.Field )]
 	public class Vector3Inspectable : Attribute
 	{
+		public bool shouldDrawLines = true;
 	}
 
 }

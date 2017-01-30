@@ -32,7 +32,8 @@ namespace Prime31Editor
 
 		// Vector3 editor
 		bool _hasVector3Fields = false;
-		IEnumerable<FieldInfo> _fields;
+		IEnumerable<FieldInfo> _vector3Fields;
+		Vector3Inspectable[] _vector3FieldAttributes;
 
 
 		public void OnEnable()
@@ -52,10 +53,18 @@ namespace Prime31Editor
 			}
 
 			// the vector3 editor needs to find any fields with the Vector3Inspectable attribute and validate them
-			_fields = type.GetFields( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
+			_vector3Fields = type.GetFields( BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic )
 				.Where( f => f.IsDefined( typeof( Vector3Inspectable ), false ) )
 				.Where( f => f.IsPublic || f.IsDefined( typeof( SerializeField ), false ) );
-			_hasVector3Fields = _fields.Count() > 0;
+			_hasVector3Fields = _vector3Fields.Count() > 0;
+
+			if( _hasVector3Fields )
+			{
+				_vector3FieldAttributes = new Vector3Inspectable[_vector3Fields.Count()];
+				var i = 0;
+				foreach( var field in _vector3Fields )
+					_vector3FieldAttributes[i++] = field.GetCustomAttributes( true ).Where( a => a is Vector3Inspectable ).Cast<Vector3Inspectable>().First();
+			}
 		}
 
 
@@ -95,8 +104,10 @@ namespace Prime31Editor
 		{
 			Undo.RecordObject( target, "Vector3 Editor" );
 
-			foreach( var field in _fields )
+			var j = 0;
+			foreach( var field in _vector3Fields )
 			{
+				var shouldDrawLines = _vector3FieldAttributes[j++].shouldDrawLines;
 				var value = field.GetValue( target );
 				if( value is Vector3 )
 				{
@@ -118,7 +129,9 @@ namespace Prime31Editor
 						Handles.Label( list[i], label + i );
 						list[i] = Handles.PositionHandle( list[i], Quaternion.identity );
 					}
-					Handles.DrawPolyLine( list.ToArray() );
+
+					if( shouldDrawLines )
+						Handles.DrawPolyLine( list.ToArray() );
 				}
 				else if( value is Vector3[] )
 				{
@@ -130,7 +143,9 @@ namespace Prime31Editor
 						Handles.Label( list[i], label + i );
 						list[i] = Handles.PositionHandle( list[i], Quaternion.identity );
 					}
-					Handles.DrawPolyLine( list );
+
+					if( shouldDrawLines )
+						Handles.DrawPolyLine( list );
 				}
 			}
 		}
