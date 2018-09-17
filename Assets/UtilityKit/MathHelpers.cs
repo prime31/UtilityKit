@@ -24,7 +24,7 @@ namespace Prime31
 		/// Maps a value from some arbitrary range to the 1 to 0 range. this is just the reverse of map01
 		/// </summary>
 		/// <param name="value">Value.</param>
-		/// <param name="min">Lminimum value.</param>
+		/// <param name="min">minimum value.</param>
 		/// <param name="max">maximum value</param>
 		public static float map10( float value, float min, float max )
 		{

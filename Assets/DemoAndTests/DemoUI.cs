@@ -36,13 +36,14 @@ public class DemoUI : MonoBehaviour
 		GUILayout.Label( "Utils" );
 		if( GUILayout.Button( "map01 Example" ) )
 		{
-			// maps a number (75 in this case) from a range of 5 - 250 to a range of 0 - 1
-			Debug.Log( "mapped: " + MathHelpers.map01( 75f, 5f, 250f ) );
+			// maps a number from a range of 5 - 250 to a range of 0 - 1
+			var num = UnityEngine.Random.Range( 5f, 250f );
+			Debug.LogFormat( "mapped {0} in range 5 - 250 to range 0 - 1: {1}", num, MathHelpers.map01( num, 5f, 250f ) );
 		}
 
 
 		GUILayout.Label( "SpriteAnimator" );
-		if( GUILayout.Button( "Sprite: Play walk-left Animation" ) )
+		if( GUILayout.Button( "Sprite: Play walk-left Animation (flipping each iteration)" ) )
 		{
 			var animationIndex = _spriteAnimator.animationIndexForAnimationName( "walk-left" );
 			_spriteAnimator.play( animationIndex );
